@@ -1,0 +1,62 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 0f0f00a64822e23a5b35bb6cff2e178f6c84a2a43019e8cda7e9a8e7a973ca3d
+
+name:           fpTask2
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/gavaharlal/fpTask2#readme>
+homepage:       https://github.com/gavaharlal/fpTask2#readme
+bug-reports:    https://github.com/gavaharlal/fpTask2/issues
+author:         Alexander
+maintainer:     gavaharlal@yandex.ru
+copyright:      2020 Alexander
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/gavaharlal/fpTask2
+
+library
+  exposed-modules:
+      Lib
+  other-modules:
+      Paths_fpTask2
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+  default-language: Haskell2010
+
+executable fpTask2-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_fpTask2
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , fpTask2
+  default-language: Haskell2010
+
+test-suite fpTask2-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_fpTask2
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , fpTask2
+  default-language: Haskell2010
