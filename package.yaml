@@ -24,6 +24,11 @@ dependencies:
 
 library:
   source-dirs: src
+  dependencies:
+    - matrix
+
+  default-extensions:
+    - LambdaCase
 
 executables:
   fpTask2-exe:
@@ -35,6 +40,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - fpTask2
+    - matrix
 
 tests:
   fpTask2-test:
@@ -46,3 +52,5 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - fpTask2
+    - matrix
+    - HUnit

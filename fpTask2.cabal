@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0f0f00a64822e23a5b35bb6cff2e178f6c84a2a43019e8cda7e9a8e7a973ca3d
+-- hash: 855b782f2f2af54df9284dcfced472e561ff8acb25d4c798e085931a8f3588f5
 
 name:           fpTask2
 version:        0.1.0.0
@@ -32,8 +32,10 @@ library
       Paths_fpTask2
   hs-source-dirs:
       src
+  default-extensions: LambdaCase
   build-depends:
       base >=4.7 && <5
+    , matrix
   default-language: Haskell2010
 
 executable fpTask2-exe
@@ -46,6 +48,7 @@ executable fpTask2-exe
   build-depends:
       base >=4.7 && <5
     , fpTask2
+    , matrix
   default-language: Haskell2010
 
 test-suite fpTask2-test
@@ -57,6 +60,8 @@ test-suite fpTask2-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      HUnit
+    , base >=4.7 && <5
     , fpTask2
+    , matrix
   default-language: Haskell2010
