@@ -5,13 +5,16 @@ module Lib
     , GameState(..)
     , Game(..)
     , makeBestDecision
-    , nextStepMatrix
     , matrixStart
+    , nextStepMatrix
+    , interactiveGame
     ) where
 
 import Data.Matrix hiding (trace)
 import Data.List (nub, sortOn)
 import Debug.Trace
+import qualified Data.HashMap.Strict as H
+import Control.Monad.Par
 
 data XO = X | O | Null deriving (Show, Eq, Read)
 
@@ -35,10 +38,10 @@ instance Ord GameState where
   compare Continue Draw  = GT
   compare Continue Losing = GT
   compare Draw Win= LT
+  compare Draw Continue = LT
   compare Losing Win = LT
   compare Losing Draw = LT
   compare Continue Win = LT
-  compare Continue Draw = GT
   compare Losing Continue= LT
   compare Win Win = EQ
   compare Draw Draw = EQ
@@ -91,24 +94,40 @@ checkGameState matrix xo
     | checkWin matrix == swapXO xo                = Losing
     | otherwise                                   = Continue
 
+xoToStr :: XO -> [Char]
+xoToStr X = "2"
+xoToStr O = "1"
+xoToStr Null = "0"
+
+maximizeToStr :: Bool -> [Char]
+maximizeToStr True = "1"
+maximizeToStr False = "0"
+
+hashFunction :: XO -> Matrix XO -> Bool -> Int
+hashFunction xo matrix maximize = read bigString :: Int
+    where
+        matrixList = concatMap xoToStr $ toList matrix
+        bigString = xoToStr xo ++ maximizeToStr maximize ++ matrixList
+
 makeBestDecision :: XO -> [Matrix XO] -> Bool -> Game
-makeBestDecision xo matrix@(m:ms) maxim = case checkGameState m (if maxim then xo else swapXO xo) of
-    Draw -> Game Draw matrix
-    Win -> Game Win matrix
-    Losing -> Game Losing matrix
-    Continue -> let
-            freePlaces = findNulls m
-            newMatrixList = map (\coords -> setElem xo coords m) freePlaces
-            decisions = map (\newM -> makeBestDecision (swapXO xo) (newM : matrix) (not maxim)) newMatrixList
-            sorted = if maxim
-              then reverse $ sortOn state decisions
-              else sortOn state decisions
-        in
-            case sorted of
-                [] -> error "We can not have blank list"
-                lst -> head $
-                  -- trace (show $ sortOn (length . returnMatrix) (filterSame lst))
-                        (sortOn (length . returnMatrix) (filterSame lst))
+makeBestDecision xo matrix@(m:ms) maximize = case checkGameState m (if maximize then xo else swapXO xo) of
+        Draw -> Game Draw matrix
+        Win -> Game Win matrix
+        Losing -> Game Losing matrix
+        Continue -> let
+                freePlaces = findNulls m
+                newMatrixList = map (\coords -> setElem xo coords m) freePlaces
+                notXO = swapXO xo
+                decisions = map (\newM -> makeBestDecision notXO (newM : matrix) (not maximize)) newMatrixList
+                sorted = if maximize
+                    then reverse $ sortOn state decisions
+                    else sortOn state decisions
+                getResult lst = head $ sortOn (length . returnMatrix) $ filterSame lst
+            in
+                case sorted of
+                    [] -> error "We can not have blank list"
+                    lst -> getResult lst
+
 
 filterSame :: [Game] -> [Game]
 filterSame lst@(Game Win _ : _) = filter (\case Game Win _ -> True; Game _ _ -> False) lst
@@ -126,18 +145,35 @@ nextStepMatrix xo matrix = newMatrix
 matrixStart :: Matrix XO
 matrixStart = fromLists [[Null, Null, O], [Null, X, X], [Null, Null, O]]
 
--- makeBestDecision2 xo matrix@(m:ms) = let
---         freePlaces = findNulls m
---         newMatrixList = map (\coords -> setElem xo coords m) freePlaces
---         decisions = map (\newM -> makeBestDecision xo (newM : matrix)) newMatrixList
---         sorted = sortOn state decisions
---     in
---   case checkGameState m xo of
---     Draw -> Game Draw matrix
---     Win -> Game Win matrix
---     Losing -> Game Losing matrix
---     Continue -> let
---         in
---             case sorted of
---                 [] -> error "We can not have blank list"
---                 (m1:_) -> m1
+interactiveGame :: IO ()
+interactiveGame = do
+    print "Choose X or O"
+    xoStr <- getLine
+    let xo = case read xoStr :: XO of
+               Null -> error "It can not be NULL"
+               xo   -> xo
+    print "Choose 1 or 2"
+    positionStr <- getLine
+    let position = read positionStr :: Int
+    print "Choose size of game field"
+    nStr <- getLine
+    let n = read nStr :: Int
+    let xoStart = [xo, swapXO xo] !! (position - 1)
+    let startMatrix = createBlankMatrix n
+    result <- gameProcess xoStart xo startMatrix
+    print result
+        where
+            gameProcess :: XO -> XO -> Matrix XO -> IO [Char]
+            gameProcess xo humanXO matrix = case checkGameState matrix xo of
+                Win -> return $ show xo ++ " win!!!"
+                Draw -> return $ "Draw("
+                Losing -> return $ show xo ++ " lose((("
+                Continue -> if xo == humanXO
+                    then (\x -> gameProcess (swapXO xo) humanXO (setElem humanXO x matrix)) =<< getCoordinates matrix
+                    else gameProcess (swapXO xo) humanXO (nextStepMatrix xo matrix)
+            getCoordinates matrix = do
+                print matrix
+                print "Your turn, input x and y"
+                xyStr <- getLine
+                let xyList = map (\x -> read x :: Int) $ take 2 $ words xyStr
+                return (head xyList, head $ tail xyList)

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 855b782f2f2af54df9284dcfced472e561ff8acb25d4c798e085931a8f3588f5
+-- hash: 53e2ceda656de8f6fb5800dd4ead7b868e31f9ba69a9d88eacca27defd2f324f
 
 name:           fpTask2
 version:        0.1.0.0
@@ -36,6 +36,9 @@ library
   build-depends:
       base >=4.7 && <5
     , matrix
+    , monad-par
+    , mtl
+    , unordered-containers
   default-language: Haskell2010
 
 executable fpTask2-exe

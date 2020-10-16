@@ -26,6 +26,9 @@ library:
   source-dirs: src
   dependencies:
     - matrix
+    - unordered-containers
+    - mtl
+    - monad-par
 
   default-extensions:
     - LambdaCase
