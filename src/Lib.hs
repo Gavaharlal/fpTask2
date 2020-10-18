@@ -10,8 +10,7 @@ module Lib
     , interactiveGame
     ) where
 
-import Data.Matrix hiding (trace)
-import Data.List (sortOn)
+import Data.List
 
 data XO = X | O | Null deriving (Show, Eq, Read)
 
@@ -24,7 +23,7 @@ data GameState = Win | Losing | Draw | Continue deriving (Show, Eq, Read)
 
 data Game = Game
     { state :: GameState
-    , returnMatrix :: [Matrix XO]
+    , returnMatrix :: [[[XO]]]
     } deriving (Show, Eq)
 
 instance Ord GameState where
@@ -48,44 +47,62 @@ instance Ord GameState where
 someFunc :: IO ()
 someFunc = putStrLn "someFunc"
 
-createBlankMatrix :: Int -> Matrix XO
-createBlankMatrix n = matrix n n (\(_,_) -> Null)
+createBlankMatrix :: Int -> [[XO]]
+createBlankMatrix n = replicate n $ replicate n Null
 
-checkWin :: Matrix XO -> XO
+setElemList :: a -> Int -> [a] -> [a]
+setElemList e i lst = fsts ++ (e : snds)
+    where
+       (fsts', snds) = splitAt i lst
+       fsts = init fsts'
+
+getElem :: Int -> Int -> [[a]] -> a
+getElem i j matrix = (matrix !! (i - 1)) !! (j - 1)
+
+setElem :: a -> (Int, Int) -> [[a]] -> [[a]]
+setElem e (i, j) matrix = matrix'
+    where
+        lst = matrix !! (i - 1)
+        lst' = setElemList e j lst
+        matrix' = setElemList lst' i matrix
+
+getRow :: Int -> [a] -> a
+getRow i matrix = matrix !! (i - 1)
+
+checkWin :: [[XO]] -> XO
 checkWin matrix =
-    case filter (\case Null -> False; _ -> True) xoList of
+    case nub $ filter (\case Null -> False; _ -> True) xoList of
         []   -> Null
         [xo] -> xo
         _    -> error "We can not have more than one win"
 
     where
-        xoList = [checkRowsAndDiagonal xo n matrix | xo <- [X, O]]
-        n = nrows matrix
+        xoList = [checkRowsAndDiagonal xo n m | xo <- [X, O], m <- [matrix, transpose matrix]]
+        n = length matrix
         checkRowsAndDiagonal xo n matrix = let
                 rowsWin = or [all (==xo) (getRow i matrix)| i <- [1..n]]
-                colsWin = or [all (==xo) (getCol i matrix)| i <- [1..n]]
                 diagWin = all (==xo) $ map (\i -> getElem i i matrix) $ [1..n]
                 anotherDiagWin = all (==xo) $ map (\(i, j) -> getElem i j matrix) $ zip [1..n] [n, n-1 .. 1]
             in
-                if rowsWin || diagWin || anotherDiagWin || colsWin
+                if rowsWin || diagWin || anotherDiagWin
                 then xo
                 else Null
 
-checkFull :: Matrix XO -> Bool
+checkFull :: Foldable t => t [XO] -> Bool
 checkFull matrix
     | null filtered = True
     | otherwise     = False
         where
             filtered = filter (\case Null -> True; _ -> False) lst
-            lst = toList matrix
+            lst = concat matrix
 
-findNulls :: Matrix XO -> [(Int, Int)]
+findNulls :: [[XO]] -> [(Int, Int)]
 findNulls matrix = [(i, j) | i <- [1..n], j <- [1..n], getElem i j matrix == Null]
     where
-        n = nrows matrix
+        n = length matrix
 
 
-checkGameState :: Matrix XO -> XO -> GameState
+checkGameState :: [[XO]] -> XO -> GameState
 checkGameState matrix xo
     | winXO == Null && checkFull matrix = Draw
     | winXO == xo                       = Win
@@ -105,15 +122,14 @@ maximizeToStr :: Bool -> [Char]
 maximizeToStr True = "1"
 maximizeToStr False = "0"
 
-hashFunction :: XO -> Matrix XO -> Bool -> Int
-hashFunction xo matrix maximize = read bigString :: Int
-    where
-        matrixList = concatMap xoToStr $ toList matrix
-        bigString = xoToStr xo ++ maximizeToStr maximize ++ matrixList
+-- hashFunction xo matrix maximize = read bigString :: Int
+--     where
+--         matrixList = concatMap xoToStr $ toList matrix
+--         bigString = xoToStr xo ++ maximizeToStr maximize ++ matrixList
 
 
-matrixStart :: Matrix XO
-matrixStart = fromLists [[Null, Null, O], [Null, X, X], [Null, Null, O]]
+matrixStart :: [[XO]]
+matrixStart = [[Null, Null, O], [Null, X, X], [Null, Null, O]]
 
 
 interactiveGame :: IO ()
@@ -148,7 +164,9 @@ interactiveGame = gameProcessCycle
                 print "Choose size of game field"
                 nStr <- getLine
                 let n = read nStr :: Int
+                print position
                 let xoStart = [xo, swapXO xo] !! (position - 1)
+                print xoStart
                 let startMatrix = createBlankMatrix n
                 result <- gameProcess xoStart xo startMatrix
                 print "Result : "
@@ -161,12 +179,12 @@ interactiveGame = gameProcessCycle
 
 
 
-nextStepMatrix :: XO -> Matrix XO -> Matrix XO
+nextStepMatrix :: XO -> [[XO]] -> [[XO]]
 nextStepMatrix xo matrix = newMatrix
     where
       newMatrix = setElem xo (makeBestDecision xo matrix True) $ matrix
 
-makeBestDecision :: XO -> Matrix XO -> Bool -> (Int, Int)
+makeBestDecision :: XO -> [[XO]] -> Bool -> (Int, Int)
 makeBestDecision xo matrix maximize = let
         freePlaces = findNulls matrix
         checkPos xo coord matrix minMax =
