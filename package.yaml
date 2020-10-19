@@ -29,9 +29,12 @@ library:
     - unordered-containers
     - mtl
     - monad-par
+    - parallel
+    - memoize
 
   default-extensions:
     - LambdaCase
+    - TemplateHaskell
 
 executables:
   fpTask2-exe:

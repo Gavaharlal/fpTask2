@@ -10,14 +10,24 @@ module Lib
     , interactiveGame
     ) where
 
-import Data.List
+import Data.List (nub, sortOn, splitAt, transpose)
+import Data.Maybe (fromJust)
+import Data.Function.Memoize
+import Control.Parallel.Strategies
 
-data XO = X | O | Null deriving (Show, Eq, Read)
+data XO = X | O | N deriving (Eq, Read)
+
+instance Show XO where
+    show X = "X"
+    show O = "O"
+    show N = "_"
 
 swapXO :: XO -> XO
 swapXO X    = O
 swapXO O    = X
-swapXO Null = error "we can not have Null here"
+swapXO N = error "we can not have Null here"
+
+deriveMemoizable ''XO
 
 data GameState = Win | Losing | Draw | Continue deriving (Show, Eq, Read)
 
@@ -48,7 +58,7 @@ someFunc :: IO ()
 someFunc = putStrLn "someFunc"
 
 createBlankMatrix :: Int -> [[XO]]
-createBlankMatrix n = replicate n $ replicate n Null
+createBlankMatrix n = replicate n $ replicate n N
 
 setElemList :: a -> Int -> [a] -> [a]
 setElemList e i lst = fsts ++ (e : snds)
@@ -69,73 +79,74 @@ setElem e (i, j) matrix = matrix'
 getRow :: Int -> [a] -> a
 getRow i matrix = matrix !! (i - 1)
 
+checkWinM :: [[XO]] -> XO
+checkWinM = memoize checkWin
+
 checkWin :: [[XO]] -> XO
 checkWin matrix =
-    case nub $ filter (\case Null -> False; _ -> True) xoList of
-        []   -> Null
+    case nub $ filter (\case N -> False; _ -> True) xoList of
+        []   -> N
         [xo] -> xo
         _    -> error "We can not have more than one win"
 
     where
         xoList = [checkRowsAndDiagonal xo n m | xo <- [X, O], m <- [matrix, transpose matrix]]
         n = length matrix
-        checkRowsAndDiagonal xo n matrix = let
+        checkRowsAndDiagonal xo n matrix = if win then xo else N
+            where
                 rowsWin = or [all (==xo) (getRow i matrix)| i <- [1..n]]
                 diagWin = all (==xo) $ map (\i -> getElem i i matrix) $ [1..n]
                 anotherDiagWin = all (==xo) $ map (\(i, j) -> getElem i j matrix) $ zip [1..n] [n, n-1 .. 1]
-            in
-                if rowsWin || diagWin || anotherDiagWin
-                then xo
-                else Null
+                win = runEval $ do
+                    rWin <- rpar $ rowsWin
+                    dWin <- rpar $ diagWin
+                    adWin <- rpar $ anotherDiagWin
+                    return $ rWin || dWin || adWin
+
 
 checkFull :: Foldable t => t [XO] -> Bool
 checkFull matrix
     | null filtered = True
     | otherwise     = False
         where
-            filtered = filter (\case Null -> True; _ -> False) lst
+            filtered = filter (\case N -> True; _ -> False) lst
             lst = concat matrix
 
 findNulls :: [[XO]] -> [(Int, Int)]
-findNulls matrix = [(i, j) | i <- [1..n], j <- [1..n], getElem i j matrix == Null]
+findNulls matrix = [(i, j) | i <- [1..n], j <- [1..n], getElem i j matrix == N]
     where
         n = length matrix
 
 
 checkGameState :: [[XO]] -> XO -> GameState
 checkGameState matrix xo
-    | winXO == Null && checkFull matrix = Draw
+    | winXO == N && checkFull matrix = Draw
     | winXO == xo                       = Win
     | winXO == swapXO xo                = Losing
     | otherwise                         = Continue
       where
-          winXO = checkWin matrix
+          winXO = checkWinM matrix
 
--- checkGameStateM = memoize2 checkGameState
 
 xoToStr :: XO -> [Char]
 xoToStr X = "2"
 xoToStr O = "1"
-xoToStr Null = "0"
+xoToStr N = "0"
 
 maximizeToStr :: Bool -> [Char]
 maximizeToStr True = "1"
 maximizeToStr False = "0"
 
--- hashFunction xo matrix maximize = read bigString :: Int
---     where
---         matrixList = concatMap xoToStr $ toList matrix
---         bigString = xoToStr xo ++ maximizeToStr maximize ++ matrixList
-
-
 matrixStart :: [[XO]]
-matrixStart = [[Null, Null, O], [Null, X, X], [Null, Null, O]]
+matrixStart = [[N, N, O], [N, X, X], [N, N, O]]
+
+matrixShow :: (Foldable t, Show a) => t [a] -> IO ()
+matrixShow matrix = putStrLn $ concatMap (\lst -> unwords (map show lst) ++ "\n") matrix
 
 
 interactiveGame :: IO ()
 interactiveGame = gameProcessCycle
         where
-            -- gameProcess :: XO -> XO -> Matrix XO -> IO [Char]
             gameProcess xo humanXO matrix = case checkGameState matrix xo of
                 Win -> return $ show xo ++ " win!!!"
                 Draw -> return $ "Draw("
@@ -146,7 +157,7 @@ interactiveGame = gameProcessCycle
                         where
                             newMatrix = nextStepMatrix xo matrix
             getCoordinates matrix = do
-                print matrix
+                matrixShow matrix
                 print "Your turn, input x and y"
                 xyStr <- getLine
                 let xyList = map (\x -> read x :: Int) $ take 2 $ words xyStr
@@ -156,7 +167,7 @@ interactiveGame = gameProcessCycle
                 print "Choose X or O"
                 xoStr <- getLine
                 let xo = case read xoStr :: XO of
-                          Null -> error "It can not be NULL"
+                          N -> error "It can not be NULL"
                           xo   -> xo
                 print "Choose 1 or 2"
                 positionStr <- getLine
@@ -178,7 +189,6 @@ interactiveGame = gameProcessCycle
                     else return ()
 
 
-
 nextStepMatrix :: XO -> [[XO]] -> [[XO]]
 nextStepMatrix xo matrix = newMatrix
     where
@@ -187,40 +197,28 @@ nextStepMatrix xo matrix = newMatrix
 makeBestDecision :: XO -> [[XO]] -> Bool -> (Int, Int)
 makeBestDecision xo matrix maximize = let
         freePlaces = findNulls matrix
-        checkPos xo coord matrix minMax =
-            let
-                newMatrix = setElem xo coord matrix
-                minMaxXO = if not minMax then xo else swapXO xo
-                checkPos' = map (\xy -> checkPos (swapXO xo) xy newMatrix (not minMax)) $ findNulls newMatrix
-            in
-                case checkGameState newMatrix minMaxXO of
-                    Draw -> 0
-                    Win -> 10
-                    Losing -> (-10)
-                    Continue -> if minMax
-                        then maximum checkPos'
-                        else minimum checkPos'
     in
-        snd $ last $ sortOn fst $ map (\crd -> ((checkPos xo crd matrix (not maximize)), crd)) $ freePlaces
+        snd $ last $ sortOn fst $ map (\crd -> ((checkPos xo crd matrix (not maximize) 0), crd)) $ freePlaces
 
-  -- case checkGameState matrix (if maximize then xo else swapXO xo) of
-  --       Draw -> (Game Draw matrix, cash)
-  --       Win -> (Game Win matrix, cash)
-  --       Losing -> (Game Losing matrix, cash)
-  --       Continue -> let
-  --               freePlaces = findNulls m
-  --               newMatrixList = map (\coords -> setElem xo coords m) freePlaces
-  --               notXO = swapXO xo
-  --               (decisions, cashes) = unzip $ map (\newM -> makeBestDecision notXO (newM : matrix) (not maximize) cash) newMatrixList
-  --               newCash = foldl1 H.union cashes
-  --               sorted = if maximize
-  --                           then reverse $ sortOn state decisions
-  --                           else sortOn state decisions
-  --               getResult lst = head $ sortOn (length . returnMatrix) $ filterSame lst
-  --               hash = hashFunction xo m maximize
-  --           in
-  --               if hash `H.member` cash
-  --                   then (fromJust $ H.lookup hash cash, cash)
-  --                   else case sorted of
-  --                             [] -> error "We can not have blank list"
-  --                             lst -> (getResult lst, newCash)
+-- checkPosM = memoize4 checkPos
+
+
+checkPos :: (Num a, Ord t, Ord a, Num t) => XO -> (Int, Int) -> [[XO]] -> Bool -> t -> a
+checkPos xo coord matrix minMax depth =
+    let
+        newMatrix = setElem xo coord matrix
+        minMaxXO = if not minMax then xo else swapXO xo
+        checkPos' = parMap rpar (\xy -> checkPos (swapXO xo) xy newMatrix (not minMax) (depth + 1)) $ findNulls newMatrix
+    in
+
+      if depth > 4
+      then (-1)
+      else
+        case checkGameState newMatrix minMaxXO of
+            Draw -> 0
+            Win -> 10
+            Losing -> (-10)
+            Continue -> if minMax
+                then maximum checkPos'
+                else minimum checkPos'
+
