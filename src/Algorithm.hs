@@ -1,4 +1,4 @@
-module Lib
+module Algorithm
     ( someFunc
     , checkWin
     , XO(..)
@@ -8,6 +8,7 @@ module Lib
     , matrixStart
     , nextStepMatrix
     , interactiveGame
+    , createBlankMatrix
     ) where
 
 import Data.List (nub, sortOn, splitAt, transpose)

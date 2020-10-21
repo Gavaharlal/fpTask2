@@ -1,6 +1,7 @@
 module Main where
 
-import Lib
+import Algorithm
+import Server
 
 main :: IO ()
-main = interactiveGame
+main = startApp

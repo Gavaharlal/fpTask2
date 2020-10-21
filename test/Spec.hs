@@ -1,6 +1,6 @@
 import Test.HUnit
 
-import Lib
+import Algorithm
 
 main :: IO ()
 main = do
