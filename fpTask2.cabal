@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bd62278a19d492673a6fb4eddaa0fa855ef1def37e850daeecc893136e99b4d7
+-- hash: 9aa50b6a5fe74d88039201378c8f6b6aa2d1c7c6987dbb93c890ab37bcb4a342
 
 name:           fpTask2
 version:        0.1.0.0
@@ -33,17 +33,18 @@ library
       Paths_fpTask2
   hs-source-dirs:
       src
-  default-extensions: LambdaCase TemplateHaskell DataKinds TypeOperators
+  default-extensions: LambdaCase TemplateHaskell DataKinds TypeOperators NamedFieldPuns DuplicateRecordFields
   build-depends:
       aeson
     , base >=4.7 && <5
+    , containers
     , matrix
     , memoize
     , monad-par
     , mtl
     , parallel
+    , random
     , servant-server
-    , unordered-containers
     , wai
     , warp
   default-language: Haskell2010

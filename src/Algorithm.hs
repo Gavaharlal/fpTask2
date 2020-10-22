@@ -9,6 +9,9 @@ module Algorithm
     , nextStepMatrix
     , interactiveGame
     , createBlankMatrix
+    , makeHumanMove
+    , swapXO
+    , checkGameState
     ) where
 
 import Data.List (nub, sortOn, splitAt, transpose)
@@ -16,12 +19,8 @@ import Data.Maybe (fromJust)
 import Data.Function.Memoize
 import Control.Parallel.Strategies
 
-data XO = X | O | N deriving (Eq, Read)
+data XO = X | O | N deriving (Eq, Show, Read)
 
-instance Show XO where
-    show X = "X"
-    show O = "O"
-    show N = "_"
 
 swapXO :: XO -> XO
 swapXO X    = O
@@ -222,4 +221,6 @@ checkPos xo coord matrix minMax depth =
             Continue -> if minMax
                 then maximum checkPos'
                 else minimum checkPos'
-
+                
+makeHumanMove :: a -> Int -> Int -> [[a]] -> [[a]]
+makeHumanMove humanXO x y matrix = setElem humanXO (x, y) matrix

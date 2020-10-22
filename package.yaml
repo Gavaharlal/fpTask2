@@ -30,17 +30,20 @@ library:
   source-dirs: src
   dependencies:
     - matrix
-    - unordered-containers
     - mtl
     - monad-par
     - parallel
     - memoize
+    - containers
+    - random
 
   default-extensions:
     - LambdaCase
     - TemplateHaskell
     - DataKinds
     - TypeOperators
+    - NamedFieldPuns
+    - DuplicateRecordFields
 
 executables:
   fpTask2-exe:
