@@ -1,10 +1,16 @@
+module Spec where
+
 import Test.HUnit
 
 import Algorithm
+import Control.Parallel.Strategies
+import System.Random
+import Control.Monad.IO.Class
+import Requests
 
 main :: IO ()
 main = do
-  runTestTT tests
+  _ <- runTestTT tests
   return ()
 
 
@@ -93,7 +99,37 @@ testDecision2 = let
     in
         TestCase $ assertEqual "X must win" X (checkWin matrixEnd)
 
-tests = TestList [ TestLabel "check win" test31
+simplePrintMatrix matrix = putStrLn $ concatMap (\line -> concatMap (\x ->  show x ++ " ") line ++ "\n") matrix
+
+
+testClients :: Int -> Assertion
+testClients n = do
+     clientsCreate <- sequenceA $ replicate n $ createSessionAPI 3 "localhost"
+     let randomCoords matrix = do
+             let l = findNulls matrix
+                 lenList = length l
+             coordsI <- liftIO $ randomRIO (0, lenList - 1)
+             return $ l !! coordsI
+
+         playGame :: Int -> [[XO]] -> IO (Bool)
+         playGame id matrixStart = do
+             coords <- randomCoords matrixStart
+             move <- makeMoveAPI id (fst coords) (snd coords) "localhost"
+             case move of
+                 Right (newMatrix, Nothing) -> playGame id newMatrix
+                 Right (newMatrix, Just _) -> do
+                     putStrLn "\n"
+                     print id
+                     simplePrintMatrix newMatrix
+                     return True
+                 Left msg -> error msg
+
+     results <- sequenceA $ parMap rpar (\(Right (matrix, id', _)) -> playGame id' matrix) clientsCreate
+     assertEqual (show n ++ " clients test") True $ and results
+
+
+tests = TestList [
+                   TestLabel "check win" test31
                  , TestLabel "check win" test32
                  , TestLabel "check win" test33
                  , TestLabel "check win" test34
@@ -102,4 +138,5 @@ tests = TestList [ TestLabel "check win" test31
                  , TestLabel "check win" test37
                  , TestLabel "check makeBestDecision" testDecision1
                  , TestLabel "check makeBestDecision 4" testDecision2
+                 , TestCase (testClients 100)
                  ]

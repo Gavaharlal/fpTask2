@@ -13,15 +13,14 @@ module Algorithm
     , swapXO
     , checkGameState
     , getElem
+    , findNulls
     ) where
 
-import Data.List (nub, sortOn, splitAt, transpose)
-import Data.Maybe (fromJust)
+import Data.List (nub, sortOn, transpose)
 import Data.Function.Memoize
 import Control.Parallel.Strategies
 
 data XO = X | O | N deriving (Eq, Show, Read)
-
 
 swapXO :: XO -> XO
 swapXO X    = O
@@ -36,24 +35,6 @@ data Game = Game
     { state :: GameState
     , returnMatrix :: [[[XO]]]
     } deriving (Show, Eq)
-
-instance Ord GameState where
-  compare Win Draw = GT
-  compare Win Losing = GT
-  compare Win Continue = GT
-  compare Draw Losing = GT
-  compare Continue Draw  = GT
-  compare Continue Losing = GT
-  compare Draw Win= LT
-  compare Draw Continue = LT
-  compare Losing Win = LT
-  compare Losing Draw = LT
-  compare Continue Win = LT
-  compare Losing Continue= LT
-  compare Win Win = EQ
-  compare Draw Draw = EQ
-  compare Losing Losing = EQ
-  compare Continue Continue = EQ
 
 someFunc :: IO ()
 someFunc = putStrLn "someFunc"
@@ -79,6 +60,7 @@ setElem e (i, j) matrix = matrix'
 
 getRow :: Int -> [a] -> a
 getRow i matrix = matrix !! (i - 1)
+
 
 checkWinM :: [[XO]] -> XO
 checkWinM = memoize checkWin
@@ -224,6 +206,7 @@ checkPos xo coord matrix minMax depth =
             Continue -> if minMax
                 then maximum checkPos'
                 else minimum checkPos'
-                
+
+
 makeHumanMove :: a -> Int -> Int -> [[a]] -> [[a]]
 makeHumanMove humanXO x y matrix = setElem humanXO (x, y) matrix

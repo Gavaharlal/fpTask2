@@ -36,6 +36,10 @@ library:
     - memoize
     - containers
     - random
+    - text
+    - req
+    - unordered-containers
+    - vector
 
   default-extensions:
     - LambdaCase
@@ -44,6 +48,7 @@ library:
     - TypeOperators
     - NamedFieldPuns
     - DuplicateRecordFields
+    - OverloadedStrings
 
 executables:
   fpTask2-exe:
@@ -70,10 +75,6 @@ executables:
       - fpTask2
       - brick
       - vty
-      - text
-      - req
-      - unordered-containers
-      - vector
 
     default-extensions:
       - OverloadedStrings
@@ -84,7 +85,7 @@ executables:
 
 tests:
   fpTask2-test:
-    main:                Spec.hs
+    main:                Spec
     source-dirs:         test
     ghc-options:
     - -threaded
@@ -94,3 +95,6 @@ tests:
     - fpTask2
     - matrix
     - HUnit
+    - unordered-containers
+    - parallel
+    - random

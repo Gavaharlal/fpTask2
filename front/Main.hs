@@ -4,33 +4,22 @@ import Brick.AttrMap
 import Brick.Main
 import Brick.Types hiding (Result)
 import Brick.Widgets.Core
-import Brick.Focus
 import Brick.Widgets.Center
-import Brick.Widgets.Edit
 import Graphics.Vty.Input.Events
-import Data.Text (Text, pack,  unpack)
 import Brick.Widgets.Border
 
 import Data.Char (isDigit)
-import Control.Monad.IO.Class
-import Network.HTTP.Req
-import Data.Aeson hiding (Error)
-import qualified Data.HashMap.Strict as H
-import Data.Vector (toList, Vector)
-import Data.Maybe (fromJust)
 import Algorithm (XO(..), getElem)
 import Prelude hiding (id, error)
 import qualified Graphics.Vty as V
 import Brick.Util (on)
-
-import Data.Aeson.TH
-$(deriveJSON defaultOptions ''XO)
+import Requests
 
 main :: IO ()
 main = do
   initialState <- buildInitialState
   endState <- defaultMain tuiApp initialState
-  print endState
+  return ()
 
 data ProgramState =
     AddressInput
@@ -89,10 +78,17 @@ drawTui ts@TuiState {programState=Game, id, matrix, coords, size, humanXO}
           zipped = map (\(l, lCoords) -> zip l lCoords) $ zip matrix coordsMatrix
           title = "Have to put " ++ (show humanXO) ++ "!"
 
-drawTui ts@TuiState {programState=End xo, matrix}
-    = [center $ padAll 4 $ str title <=> printMatrixSimple matrix <=> str "Input q => for quit \nand r => for restart"]
+drawTui ts@TuiState {programState=End xo, matrix, humanXO}
+    = [center $ padAll 4 $
+          hCenter ( str title ) <=>
+          hCenter (printMatrixSimple matrix) <=>
+          hCenter ( str "Input q => for quit " ) <=>
+          hCenter ( str "and r => for restart" )
+      ]
         where
-            title = show xo ++ " win!"
+            title = case xo of
+              N -> "Draw"
+              _ -> if xo == humanXO then "Win" else "Lose"
 
 drawTui ts@TuiState {programState=Error errorMsg}
     = [center $ padAll 4 $ titleAndText "ERROR"$ errorMsg]
@@ -146,7 +142,7 @@ handleTuiEvent s e =
     Game ->
       if id s == 0
           then do
-              result <- createSession (size s) (address s)
+              result <- createSessionAPI (size s) (address s)
               case result of
                   Left errorMsg -> continue $ s { programState=Error errorMsg }
                   -- Right (newMatrix, id, humanXO) -> makeMove (s { matrix=newMatrix, id=id, humanXO=humanXO }) e
@@ -186,46 +182,6 @@ makeMove state@TuiState{coords=(x, y), size, matrix, id, address} event =
             otherwise -> continue state
         _ -> continue state
 
-
-createSession size address = runReq defaultHttpConfig $ do
-  r <-
-    req
-      GET
-      (http (pack address) /: "session-create")
-      NoReqBody
-      jsonResponse $
-      ("size" =: (size :: Int))
-  let requestData = (responseBody r :: Object)
-      Success newMatrix = fromJSON (fromJust $ H.lookup "matrix" requestData) :: Result [[XO]]
-      Success id = fromJSON (fromJust $ H.lookup "id" requestData) :: Result Int
-      Success humanXO = fromJSON (fromJust $ H.lookup "humanXO" requestData) :: Result XO
-      error = fromJSON (fromJust $ H.lookup "error" requestData) :: Result String
-      result = case error of
-          Success errorMsg -> Left errorMsg
-          _                -> Right (newMatrix, id, humanXO)
-  return result
-
-makeMoveAPI id x y address = runReq defaultHttpConfig $ do
-  r <-
-    req
-      GET
-      (http (pack address) /: "move")
-      NoReqBody
-      jsonResponse $
-      ("id" =: (id :: Int)) <>
-      ("x" =: (x :: Int)) <>
-      ("y" =: (y :: Int))
-  let requestData = (responseBody r :: Object)
-      Success newMatrix = fromJSON (fromJust $ H.lookup "matrix" requestData) :: Result [[XO]]
-      win = fromJSON (fromJust $ H.lookup "win" requestData) :: Result XO
-      error = fromJSON (fromJust $ H.lookup "error" requestData) :: Result String
-      result = case error of
-          Success errorMsg -> Left errorMsg
-          _                ->
-              case win of
-                  Success xo -> Right (newMatrix, Just xo)
-                  _          -> Right (newMatrix, Nothing)
-  return result
 
 addressInput state@TuiState {programState=AddressInput, address} event =
   case event of

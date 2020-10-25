@@ -55,7 +55,7 @@ startApp :: IO ()
 startApp = run 8081 =<< app
 
 globalStateStart :: GlobalState
-globalStateStart = GlobalState [1..100] M.empty
+globalStateStart = GlobalState [1..500] M.empty
 
 app :: IO Application
 app = (serve api . server) <$> newIORef globalStateStart

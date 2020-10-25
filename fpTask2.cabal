@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d73a4d62a867bf1e6e688837da8e83b76cc92f63d9bc56174a9b615937251531
+-- hash: fd09f5043594e94a21be8e124bfc36fc56590bf12ac23980803b0386af31c96d
 
 name:           fpTask2
 version:        0.1.0.0
@@ -28,12 +28,13 @@ source-repository head
 library
   exposed-modules:
       Algorithm
+      Requests
       Server
   other-modules:
       Paths_fpTask2
   hs-source-dirs:
       src
-  default-extensions: LambdaCase TemplateHaskell DataKinds TypeOperators NamedFieldPuns DuplicateRecordFields
+  default-extensions: LambdaCase TemplateHaskell DataKinds TypeOperators NamedFieldPuns DuplicateRecordFields OverloadedStrings
   build-depends:
       aeson
     , base >=4.7 && <5
@@ -44,7 +45,11 @@ library
     , mtl
     , parallel
     , random
+    , req
     , servant-server
+    , text
+    , unordered-containers
+    , vector
     , wai
     , warp
   default-language: Haskell2010
@@ -79,11 +84,7 @@ executable fpTask2-front
     , base >=4.7 && <5
     , brick
     , fpTask2
-    , req
     , servant-server
-    , text
-    , unordered-containers
-    , vector
     , vty
     , wai
     , warp
@@ -96,14 +97,17 @@ test-suite fpTask2-test
       Paths_fpTask2
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is Spec
   build-depends:
       HUnit
     , aeson
     , base >=4.7 && <5
     , fpTask2
     , matrix
+    , parallel
+    , random
     , servant-server
+    , unordered-containers
     , wai
     , warp
   default-language: Haskell2010
