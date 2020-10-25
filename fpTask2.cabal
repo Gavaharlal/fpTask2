@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9aa50b6a5fe74d88039201378c8f6b6aa2d1c7c6987dbb93c890ab37bcb4a342
+-- hash: d73a4d62a867bf1e6e688837da8e83b76cc92f63d9bc56174a9b615937251531
 
 name:           fpTask2
 version:        0.1.0.0
@@ -55,13 +55,36 @@ executable fpTask2-exe
       Paths_fpTask2
   hs-source-dirs:
       app
-  ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-N -main-is Main
   build-depends:
       aeson
     , base >=4.7 && <5
     , fpTask2
     , matrix
     , servant-server
+    , wai
+    , warp
+  default-language: Haskell2010
+
+executable fpTask2-front
+  main-is: Main.hs
+  other-modules:
+      Paths_fpTask2
+  hs-source-dirs:
+      front
+  default-extensions: OverloadedStrings NamedFieldPuns DataKinds TemplateHaskell LambdaCase
+  ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-N -main-is Main
+  build-depends:
+      aeson
+    , base >=4.7 && <5
+    , brick
+    , fpTask2
+    , req
+    , servant-server
+    , text
+    , unordered-containers
+    , vector
+    , vty
     , wai
     , warp
   default-language: Haskell2010

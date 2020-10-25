@@ -52,7 +52,7 @@ type IOState = IORef GlobalState
 
 
 startApp :: IO ()
-startApp = run 8080 =<< app
+startApp = run 8081 =<< app
 
 globalStateStart :: GlobalState
 globalStateStart = GlobalState [1..100] M.empty

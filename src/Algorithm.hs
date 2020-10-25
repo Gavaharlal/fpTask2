@@ -12,6 +12,7 @@ module Algorithm
     , makeHumanMove
     , swapXO
     , checkGameState
+    , getElem
     ) where
 
 import Data.List (nub, sortOn, splitAt, transpose)
@@ -190,17 +191,19 @@ interactiveGame = gameProcessCycle
 
 
 nextStepMatrix :: XO -> [[XO]] -> [[XO]]
-nextStepMatrix xo matrix = newMatrix
+nextStepMatrix xo matrix = case newCoordinates of
+    Just coords -> setElem xo coords $ matrix
+    _ -> matrix
     where
-      newMatrix = setElem xo (makeBestDecision xo matrix True) $ matrix
+      newCoordinates = makeBestDecision xo matrix True
 
-makeBestDecision :: XO -> [[XO]] -> Bool -> (Int, Int)
+makeBestDecision :: XO -> [[XO]] -> Bool -> Maybe (Int, Int)
 makeBestDecision xo matrix maximize = let
         freePlaces = findNulls matrix
     in
-        snd $ last $ sortOn fst $ map (\crd -> ((checkPos xo crd matrix (not maximize) 0), crd)) $ freePlaces
-
--- checkPosM = memoize4 checkPos
+        if not $ null freePlaces
+        then Just $ snd $ last $ sortOn fst $ map (\crd -> ((checkPos xo crd matrix (not maximize) 0), crd)) $ freePlaces
+        else Nothing
 
 
 checkPos :: (Num a, Ord t, Ord a, Num t) => XO -> (Int, Int) -> [[XO]] -> Bool -> t -> a
@@ -211,7 +214,7 @@ checkPos xo coord matrix minMax depth =
         checkPos' = parMap rpar (\xy -> checkPos (swapXO xo) xy newMatrix (not minMax) (depth + 1)) $ findNulls newMatrix
     in
 
-      if depth > 4
+      if depth > 5
       then (-1)
       else
         case checkGameState newMatrix minMaxXO of

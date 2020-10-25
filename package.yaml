@@ -47,7 +47,7 @@ library:
 
 executables:
   fpTask2-exe:
-    main:                Main.hs
+    main:                Main
     source-dirs:         app
     ghc-options:
     - -O2
@@ -57,6 +57,30 @@ executables:
     dependencies:
     - fpTask2
     - matrix
+
+  fpTask2-front:
+    main:                Main
+    source-dirs:         front
+    ghc-options:
+      - -O2
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - fpTask2
+      - brick
+      - vty
+      - text
+      - req
+      - unordered-containers
+      - vector
+
+    default-extensions:
+      - OverloadedStrings
+      - NamedFieldPuns
+      - DataKinds
+      - TemplateHaskell
+      - LambdaCase
 
 tests:
   fpTask2-test:
