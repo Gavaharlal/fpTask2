@@ -7,6 +7,7 @@ import Control.Parallel.Strategies
 import System.Random
 import Control.Monad.IO.Class
 import Requests
+import Config
 
 main :: IO ()
 main = do
@@ -104,7 +105,7 @@ simplePrintMatrix matrix = putStrLn $ concatMap (\line -> concatMap (\x ->  show
 
 testClients :: Int -> Assertion
 testClients n = do
-     clientsCreate <- sequenceA $ replicate n $ createSessionAPI 3 "localhost"
+     clientsCreate <- sequenceA $ replicate n $ createSessionAPI 3 defaultHost defaultPort
      let randomCoords matrix = do
              let l = findNulls matrix
                  lenList = length l
@@ -114,7 +115,7 @@ testClients n = do
          playGame :: Int -> [[XO]] -> IO (Bool)
          playGame id matrixStart = do
              coords <- randomCoords matrixStart
-             move <- makeMoveAPI id (fst coords) (snd coords) "localhost"
+             move <- makeMoveAPI id (fst coords) (snd coords) defaultHost defaultPort
              case move of
                  Right (newMatrix, Nothing) -> playGame id newMatrix
                  Right (newMatrix, Just _) -> do

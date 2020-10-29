@@ -19,25 +19,25 @@ type Matrix = [[XO]]
 
 data SessionState = SessionState
   { matrix :: Matrix
-  , aiXO :: XO
+  , aiXO   :: XO
   } deriving (Show, Eq)
 
 data GlobalState = GlobalState
-    { freeIds :: [Int]
+    { freeIds       :: [Int]
     , sessionsState :: M.Map Int SessionState
     } deriving (Show, Eq)
 
 data ReturnData = ReturnData
     { matrix :: Maybe Matrix
-    , error :: Maybe String
-    , win :: Maybe XO
+    , error  :: Maybe String
+    , win    :: Maybe XO
     } deriving (Show, Eq)
 
 data FirstData = FirstData
-    { matrix :: Maybe Matrix
-    , id :: Maybe Int
+    { matrix  :: Maybe Matrix
+    , id      :: Maybe Int
     , humanXO :: Maybe XO
-    , error :: Maybe String
+    , error   :: Maybe String
     } deriving (Show, Eq)
 
 
@@ -51,8 +51,10 @@ type API = "session-create" :> QueryParam "size" Int :> Get '[JSON] FirstData
 type IOState = IORef GlobalState
 
 
-startApp :: IO ()
-startApp = run 8081 =<< app
+startApp :: Int -> IO ()
+startApp port = do
+    putStrLn $ "running server on port " <> show port
+    run port =<< app
 
 globalStateStart :: GlobalState
 globalStateStart = GlobalState [1..500] M.empty

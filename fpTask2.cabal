@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fd09f5043594e94a21be8e124bfc36fc56590bf12ac23980803b0386af31c96d
+-- hash: 666ccc538e14ee16a74b3eb358c27091da7c5141178098fd1dd5b8e93393876f
 
 name:           fpTask2
 version:        0.1.0.0
@@ -28,6 +28,7 @@ source-repository head
 library
   exposed-modules:
       Algorithm
+      Config
       Requests
       Server
   other-modules:

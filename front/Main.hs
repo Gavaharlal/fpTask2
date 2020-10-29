@@ -14,6 +14,7 @@ import Prelude hiding (id, error)
 import qualified Graphics.Vty as V
 import Brick.Util (on)
 import Requests
+import Config
 
 main :: IO ()
 main = do
@@ -23,6 +24,7 @@ main = do
 
 data ProgramState =
     AddressInput
+  | PortInput { portStr :: String }
   | SizeInput { sizeStr :: String }
   | Game
   | End {win :: XO}
@@ -32,6 +34,7 @@ data ProgramState =
 data TuiState = TuiState
     { programState :: ProgramState
     , address :: String
+    , port :: Int
     , size :: Int
     , matrix :: [[XO]]
     , id :: Int
@@ -40,11 +43,10 @@ data TuiState = TuiState
     }
     deriving (Show, Eq)
 
-startTuiState = TuiState AddressInput "" 0 [[]] 0 N (1, 1)
+startTuiState :: TuiState
+startTuiState = TuiState AddressInput "" defaultPort 0 [[]] 0 N (1, 1)
 
-data ResourceName =
-  ResourceName | EditPort
-  deriving (Show, Eq, Ord)
+data ResourceName = ResourceName deriving (Show, Eq, Ord)
 
 tuiApp :: App TuiState e ResourceName
 tuiApp =
@@ -55,6 +57,8 @@ tuiApp =
     , appStartEvent = pure
     , appAttrMap = const theMap --const $ attrMap mempty []
     }
+
+theMap :: AttrMap
 theMap = attrMap V.defAttr
     [ (attrName "standart",                   V.white `on` V.black)
     , (attrName "highlight",                   V.red `on` V.black)
@@ -66,6 +70,9 @@ buildInitialState = pure startTuiState
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts@TuiState {programState=AddressInput, address}
     = [center $ padAll 4 $ titleAndText "Input address and press enter:\n"$ address]
+
+drawTui ts@TuiState {programState=PortInput portStr}
+    = [center $ padAll 4 $ titleAndText "Input port and press enter:\n"$ portStr]
 
 drawTui ts@TuiState {programState=SizeInput sizeStr}
     = [center $ padAll 4 $ titleAndText "Input size and press enter:\n"$ sizeStr]
@@ -93,11 +100,13 @@ drawTui ts@TuiState {programState=End xo, matrix, humanXO}
 drawTui ts@TuiState {programState=Error errorMsg}
     = [center $ padAll 4 $ titleAndText "ERROR"$ errorMsg]
 
+titleAndText :: [Char] -> [Char] -> Widget n
 titleAndText title text = border $ ttitle <+> ttext
     where
         ttitle = str title
         ttext = str text
 
+printMatrixSimple :: [[XO]] -> Widget n
 printMatrixSimple matrix =
     joinBorders $
         vBox $
@@ -112,6 +121,7 @@ printMatrixSimple matrix =
             )
         ) matrix
 
+printMatrix :: Eq a => [[(XO, a)]] -> a -> Widget n
 printMatrix matrix currentCoords =
     joinBorders $
         vBox $
@@ -137,21 +147,22 @@ handleTuiEvent :: TuiState -> BrickEvent n e -> EventM n (Next TuiState)
 handleTuiEvent s e =
   case programState s of
     AddressInput -> addressInput s e
+    PortInput _ -> portInput s e
     SizeInput _ -> sizeInput s e
     Error _ -> continue $ startTuiState
     Game ->
       if id s == 0
           then do
-              result <- createSessionAPI (size s) (address s)
+              result <- createSessionAPI (size s) (address s) (port s)
               case result of
                   Left errorMsg -> continue $ s { programState=Error errorMsg }
-                  -- Right (newMatrix, id, humanXO) -> makeMove (s { matrix=newMatrix, id=id, humanXO=humanXO }) e
                   Right (newMatrix, id, humanXO) -> continue (s { matrix=newMatrix, id=id, humanXO=humanXO })
           else
               makeMove s e
     End xo -> gameEnd s e
 
-makeMove state@TuiState{coords=(x, y), size, matrix, id, address} event =
+makeMove :: TuiState -> BrickEvent n1 e -> EventM n2 (Next TuiState)
+makeMove state@TuiState{coords=(x, y), size, matrix, id, address, port} event =
   case event of
     VtyEvent vtye ->
       case vtye of
@@ -174,7 +185,7 @@ makeMove state@TuiState{coords=(x, y), size, matrix, id, address} event =
 
         EvKey KEnter [] -> case getElem x y matrix of
             N -> do
-                result <- makeMoveAPI id x y address
+                result <- makeMoveAPI id x y address port
                 case result of
                     Left errorMsg -> continue $ state { programState=Error errorMsg }
                     Right (newMatrix, Nothing) -> continue $ state {programState=Game, matrix=newMatrix}
@@ -183,6 +194,7 @@ makeMove state@TuiState{coords=(x, y), size, matrix, id, address} event =
         _ -> continue state
 
 
+addressInput :: TuiState -> BrickEvent n1 e -> EventM n2 (Next TuiState)
 addressInput state@TuiState {programState=AddressInput, address} event =
   case event of
     VtyEvent vtye ->
@@ -190,10 +202,25 @@ addressInput state@TuiState {programState=AddressInput, address} event =
         EvKey (KChar 'q') [] -> halt state
         EvKey KDel [] -> continue $ state { programState=AddressInput, address=init address}
         EvKey (KChar c) [] -> continue $ state { programState=AddressInput, address=address ++ [c]}
-        EvKey KEnter [] -> continue state {programState=SizeInput ""}
+        EvKey KEnter [] -> continue state {programState=PortInput ""}
+        _ -> continue state
+    _ -> continue state
+    
+portInput :: TuiState -> BrickEvent n1 e -> EventM n2 (Next TuiState)
+portInput state@TuiState {programState=PortInput portStr} event =
+  case event of
+    VtyEvent vtye ->
+      case vtye of
+        EvKey (KChar 'q') [] -> halt state
+        EvKey (KChar c) [] -> continue $ state { programState=PortInput (portStr ++ [c])}
+        EvKey KEnter [] ->
+                if all isDigit portStr
+                    then continue $ state {programState=SizeInput "", port=read portStr :: Int}
+                    else continue $ state {programState=PortInput ""}
         _ -> continue state
     _ -> continue state
 
+sizeInput :: TuiState -> BrickEvent n1 e -> EventM n2 (Next TuiState)
 sizeInput state@TuiState {programState=SizeInput sizeStr} event =
   case event of
     VtyEvent vtye ->
@@ -207,6 +234,7 @@ sizeInput state@TuiState {programState=SizeInput sizeStr} event =
         _ -> continue state
     _ -> continue state
 
+gameEnd :: TuiState -> BrickEvent n1 e -> EventM n2 (Next TuiState)
 gameEnd state@TuiState {programState=End _} event =
   case event of
     VtyEvent vtye ->

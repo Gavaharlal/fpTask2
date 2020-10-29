@@ -16,7 +16,8 @@ import Algorithm
 import Data.Aeson.TH
 $(deriveJSON defaultOptions ''XO)
 
-createSessionAPI size address = runReq defaultHttpConfig $ do
+createSessionAPI :: MonadIO m => Int -> String -> Int -> m (Either String ([[XO]], Int, XO))
+createSessionAPI size address portParam = runReq defaultHttpConfig $ do
   r <-
     req
       GET
@@ -24,7 +25,7 @@ createSessionAPI size address = runReq defaultHttpConfig $ do
       NoReqBody
       jsonResponse $
       ("size" =: (size :: Int)) <>
-      port 8081 -- hardcoded
+      port portParam
   let requestData = (responseBody r :: Object)
       Success newMatrix = fromJSON (fromJust $ H.lookup "matrix" requestData) :: Result [[XO]]
       Success id = fromJSON (fromJust $ H.lookup "id" requestData) :: Result Int
@@ -35,7 +36,8 @@ createSessionAPI size address = runReq defaultHttpConfig $ do
           _                -> Right (newMatrix, id, humanXO)
   return result
 
-makeMoveAPI id x y address = runReq defaultHttpConfig $ do
+makeMoveAPI :: MonadIO m => Int -> Int -> Int -> String -> Int -> m (Either String ([[XO]], Maybe XO))
+makeMoveAPI id x y address portParam = runReq defaultHttpConfig $ do
   r <-
     req
       GET
@@ -45,7 +47,7 @@ makeMoveAPI id x y address = runReq defaultHttpConfig $ do
       ("id" =: (id :: Int)) <>
       ("x" =: (x :: Int)) <>
       ("y" =: (y :: Int)) <>
-      port 8081
+      port portParam
   let requestData = (responseBody r :: Object)
       Success newMatrix = fromJSON (fromJust $ H.lookup "matrix" requestData) :: Result [[XO]]
       win = fromJSON (fromJust $ H.lookup "win" requestData) :: Result XO
